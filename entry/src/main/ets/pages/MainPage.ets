@@ -836,7 +836,7 @@ struct CalendarView {
               .borderRadius(20)
               .shadow(ShadowStyle.OUTER_DEFAULT_MD)
             }
-          }, (g: DayGroup) => g.dateKey)
+          }, (g: DayGroup) => g.dateKey + '#' + g.items.join('|'))
         }
         .layoutWeight(1)
         .width('100%')
