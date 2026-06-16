@@ -1,0 +1,28 @@
+{
+  "insightIntentsSrcEntry": [
+    {
+      "srcEntry": "./ets/insightintents/RecordIdeaIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/QueryIdeasIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/CreateProjectIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/NotifyAllIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/QueryTasksIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/QueryByOwnerIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/QueryTodayProjectsIntent.ets"
+    },
+    {
+      "srcEntry": "./ets/insightintents/UpdateNodeStatusIntent.ets"
+    }
+  ]
+}
