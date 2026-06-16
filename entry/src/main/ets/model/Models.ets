@@ -23,7 +23,7 @@ export class ProjectNode {
   name: string;
   owner: string;
   dueAt: number;
-  status: string;    // 'pending' | 'inProgress' | 'done' | 'overdue'
+  status: string;    // 'pending' | 'inProgress' | 'done'
   notified: boolean;
 
   constructor(name: string, owner: string, dueAt: number, status: string, notified: boolean) {
@@ -66,24 +66,3 @@ export const NODE_TEMPLATES: NodeTemplate[] = [
 ];
 
 export const ALL_ROLES: string[] = ['编导', '剪辑', '运营'];
-
-export function statusLabel(status: string): string {
-  if (status === 'done') return '已完成';
-  if (status === 'overdue') return '已逾期';
-  if (status === 'inProgress') return '进行中';
-  return '未开始';
-}
-
-export function statusColor(status: string): string {
-  if (status === 'done') return '#34A853';
-  if (status === 'overdue') return '#EA4335';
-  if (status === 'inProgress') return '#0A59F7';
-  return '#9AA0A6';
-}
-
-export function statusBg(status: string): string {
-  if (status === 'done') return '#E6F4EA';
-  if (status === 'overdue') return '#FCE8E6';
-  if (status === 'inProgress') return '#E8F0FE';
-  return '#F1F3F4';
-}

@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "module description"
+      "value": "创作中枢应用模块"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "description"
+      "value": "创作中枢 · 一句话从灵感到立项"
     },
     {
       "name": "EntryAbility_label",
-      "value": "label"
+      "value": "创作中枢"
     }
   ]
 }

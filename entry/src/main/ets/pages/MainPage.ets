@@ -114,6 +114,7 @@ struct FocusCard {
         } else {
           clearInterval(this.timerId);
           this.running = false;
+          this.seconds = 1500;
           celebrate();
           promptAction.showToast({ message: '专注完成，奖励自己一下 🎉' });
         }
@@ -185,14 +186,26 @@ struct IdeaItem {
   @ObjectLink idea: Idea;
 
   async onConvert(): Promise<void> {
-    let msg: string = '已立项 ✅';
+    let msg: string = '';
+    let ok: boolean = false;
     try {
       msg = await CreationHub.convertAndNotify(this.idea.id);
+      ok = msg.indexOf('已立项') >= 0;
     } catch (e) {
+      msg = '立项失败，请重试';
     }
     bumpData();
-    celebrate();
+    if (ok) {
+      celebrate();
+    }
     promptAction.showToast({ message: msg });
+  }
+
+  onDelete(): void {
+    CreationHub.deleteIdea(this.idea.id);
+    bumpData();
+    vibe(16);
+    promptAction.showToast({ message: '已删除灵感 🗑️' });
   }
 
   build() {
@@ -227,6 +240,12 @@ struct IdeaItem {
       } else {
         Text('✓').fontSize(18).fontColor('#34A853')
       }
+      Text('🗑️')
+        .fontSize(16)
+        .margin({ left: 14 })
+        .onClick(() => {
+          this.onDelete();
+        })
     }
     .width('100%')
     .padding(18)
@@ -253,10 +272,10 @@ struct NodeItem {
   }
 
   onNotify(): void {
-    CreationHub.notifyNode(this.projectId, this.node.name);
+    const ok: boolean = CreationHub.notifyNode(this.projectId, this.node.name);
     vibe(20);
     bumpData();
-    promptAction.showToast({ message: `已通知 ${this.node.owner} ✅` });
+    promptAction.showToast({ message: ok ? `已通知 ${this.node.owner} ✅` : '通知失败，没找到该节点' });
   }
 
   fmt(ts: number): string {
@@ -328,10 +347,37 @@ struct ProjectItem {
   @ObjectLink project: Project;
 
   onNotifyAll(): void {
-    const n: number = CreationHub.notifyAllInProject(this.project.id);
+    const nodes: ProjectNode[] = this.project.nodes;
+    if (nodes.length === 0) {
+      promptAction.showToast({ message: '没有可通知的人' });
+      return;
+    }
+    const projectId: string = this.project.id;
+    const owners: Set<string> = new Set();
+    let i: number = 0;
+    let timer: number = -1;
+    // 逐个通知：每隔 500ms 点亮一个，营造「一个个发出去」的真实节奏
+    timer = setInterval(() => {
+      if (i >= nodes.length) {
+        clearInterval(timer);
+        celebrate();
+        promptAction.showToast({ message: `已逐个通知 ${owners.size} 人 ✅` });
+        return;
+      }
+      const node: ProjectNode = nodes[i];
+      CreationHub.notifyNode(projectId, node.name);
+      owners.add(node.owner);
+      vibe(16);
+      bumpData();
+      i = i + 1;
+    }, 500);
+  }
+
+  onDelete(): void {
+    CreationHub.deleteProject(this.project.id);
     bumpData();
-    celebrate();
-    promptAction.showToast({ message: `已一键通知全部 ${n} 人 ✅` });
+    vibe(16);
+    promptAction.showToast({ message: '已删除项目 🗑️' });
   }
 
   build() {
@@ -351,6 +397,12 @@ struct ProjectItem {
           .padding({ left: 14, right: 14 })
           .onClick(() => {
             this.onNotifyAll();
+          })
+        Text('🗑️')
+          .fontSize(15)
+          .margin({ left: 10 })
+          .onClick(() => {
+            this.onDelete();
           })
       }
       .width('100%')
@@ -474,44 +526,22 @@ struct IdeasView {
       promptAction.showToast({ message: '先写点灵感内容' });
       return;
     }
-    // 双保险：持久化即使抛错也不能中断 UI 刷新（灵感已进内存）
+    // 双保险：持久化即使抛错也不中断 UI 刷新（灵感已进内存）
+    let ok: boolean = true;
     try {
       await CreationHub.recordIdea(text, []);
     } catch (e) {
+      ok = false;
     }
     this.draft = '';
     bumpData();
     this.refresh();
-    vibe(16);
-    promptAction.showToast({ message: '灵感已记下 ✅' });
-  }
-
-  onDeleteIdea(ideaId: string): void {
-    CreationHub.deleteIdea(ideaId);
-    bumpData();
-    this.refresh();
-    vibe(16);
-    promptAction.showToast({ message: '已删除灵感 🗑️' });
-  }
-
-  // 左滑出现的删除按钮
-  @Builder
-  ideaSwipe(ideaId: string) {
-    Column() {
-      Text('删除')
-        .fontSize(14)
-        .fontColor(Color.White)
-        .fontWeight(FontWeight.Medium)
+    if (ok) {
+      vibe(16);
+      promptAction.showToast({ message: '灵感已记下 ✅' });
+    } else {
+      promptAction.showToast({ message: '记录失败，请重试' });
     }
-    .width(76)
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .backgroundColor('#EA4335')
-    .borderRadius(20)
-    .margin({ left: 10 })
-    .onClick(() => {
-      this.onDeleteIdea(ideaId);
-    })
   }
 
   build() {
@@ -578,7 +608,6 @@ struct IdeasView {
             ListItem() {
               IdeaItem({ idea: idea })
             }
-            .swipeAction({ end: this.ideaSwipe(idea.id) })
           }, (idea: Idea) => idea.id)
         }
         .layoutWeight(1)
@@ -610,15 +639,36 @@ struct ProjectsView {
   }
 
   refresh(): void {
-    this.projects = CreationHub.queryProjects();
+    this.applyFilter();
+  }
+
+  // 按当前选中的岗位 chip 过滤项目列表（全部/今天=不过滤）
+  applyFilter(): void {
+    const all: Project[] = CreationHub.queryProjects();
+    if (this.activeChip === '编导' || this.activeChip === '剪辑' || this.activeChip === '运营') {
+      this.projects = all.filter((p: Project) =>
+        p.nodes.some((n: ProjectNode) => n.owner === this.activeChip));
+    } else {
+      this.projects = all;
+    }
   }
 
   onChip(label: string): void {
-    this.activeChip = label;
-    const b: TaskBrief = label === '今天'
-      ? CreationHub.queryTodayProjects()
-      : CreationHub.queryTasksByOwner(label);
-    this.brief = b.text;
+    if (this.activeChip === label) {
+      // 再点一次取消选中
+      this.activeChip = '';
+      this.brief = '';
+    } else {
+      this.activeChip = label;
+      if (label === '今天') {
+        this.brief = CreationHub.queryTodayProjects().text;
+      } else if (label === '全部') {
+        this.brief = '';
+      } else {
+        this.brief = CreationHub.queryTasksByOwner(label).text;
+      }
+    }
+    this.applyFilter();
   }
 
   @Builder
@@ -634,34 +684,6 @@ struct ProjectsView {
       })
   }
 
-  onDeleteProject(projectId: string): void {
-    CreationHub.deleteProject(projectId);
-    bumpData();
-    this.refresh();
-    vibe(16);
-    promptAction.showToast({ message: '已删除项目 🗑️' });
-  }
-
-  // 左滑出现的删除按钮
-  @Builder
-  projSwipe(projectId: string) {
-    Column() {
-      Text('删除')
-        .fontSize(14)
-        .fontColor(Color.White)
-        .fontWeight(FontWeight.Medium)
-    }
-    .width(76)
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .backgroundColor('#EA4335')
-    .borderRadius(20)
-    .margin({ left: 10 })
-    .onClick(() => {
-      this.onDeleteProject(projectId);
-    })
-  }
-
   build() {
     Column() {
       Column() {
@@ -669,14 +691,18 @@ struct ProjectsView {
           .fontSize(26)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.White)
-        Row() {
-          ForEach(['今天', '编导', '剪辑', '运营'], (r: string) => {
-            this.Chip(r);
-          }, (r: string) => r)
+        Scroll() {
+          Row({ space: 10 }) {
+            ForEach(['全部', '今天', '编导', '剪辑', '运营'], (r: string) => {
+              this.Chip(r);
+            }, (r: string) => r)
+          }
         }
         .width('100%')
         .margin({ top: 16 })
-        .justifyContent(FlexAlign.SpaceBetween)
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Start)
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
@@ -721,7 +747,6 @@ struct ProjectsView {
             ListItem() {
               ProjectItem({ project: p })
             }
-            .swipeAction({ end: this.projSwipe(p.id) })
           }, (p: Project) => p.id)
         }
         .layoutWeight(1)
