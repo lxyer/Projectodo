@@ -486,6 +486,34 @@ struct IdeasView {
     promptAction.showToast({ message: '灵感已记下 ✅' });
   }
 
+  onDeleteIdea(ideaId: string): void {
+    CreationHub.deleteIdea(ideaId);
+    bumpData();
+    this.refresh();
+    vibe(16);
+    promptAction.showToast({ message: '已删除灵感 🗑️' });
+  }
+
+  // 左滑出现的删除按钮
+  @Builder
+  ideaSwipe(ideaId: string) {
+    Column() {
+      Text('删除')
+        .fontSize(14)
+        .fontColor(Color.White)
+        .fontWeight(FontWeight.Medium)
+    }
+    .width(76)
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#EA4335')
+    .borderRadius(20)
+    .margin({ left: 10 })
+    .onClick(() => {
+      this.onDeleteIdea(ideaId);
+    })
+  }
+
   build() {
     Column() {
       Column() {
@@ -550,6 +578,7 @@ struct IdeasView {
             ListItem() {
               IdeaItem({ idea: idea })
             }
+            .swipeAction({ end: this.ideaSwipe(idea.id) })
           }, (idea: Idea) => idea.id)
         }
         .layoutWeight(1)
@@ -603,6 +632,34 @@ struct ProjectsView {
       .onClick(() => {
         this.onChip(label);
       })
+  }
+
+  onDeleteProject(projectId: string): void {
+    CreationHub.deleteProject(projectId);
+    bumpData();
+    this.refresh();
+    vibe(16);
+    promptAction.showToast({ message: '已删除项目 🗑️' });
+  }
+
+  // 左滑出现的删除按钮
+  @Builder
+  projSwipe(projectId: string) {
+    Column() {
+      Text('删除')
+        .fontSize(14)
+        .fontColor(Color.White)
+        .fontWeight(FontWeight.Medium)
+    }
+    .width(76)
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#EA4335')
+    .borderRadius(20)
+    .margin({ left: 10 })
+    .onClick(() => {
+      this.onDeleteProject(projectId);
+    })
   }
 
   build() {
@@ -664,6 +721,7 @@ struct ProjectsView {
             ListItem() {
               ProjectItem({ project: p })
             }
+            .swipeAction({ end: this.projSwipe(p.id) })
           }, (p: Project) => p.id)
         }
         .layoutWeight(1)
