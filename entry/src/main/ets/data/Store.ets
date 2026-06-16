@@ -126,8 +126,20 @@ export class Persist {
     }
   }
 
+  // 通知所有页面刷新：dataVersion 自增，各 View 的 @StorageProp('dataVersion') @Watch 监听到即刷新。
+  // 关键：无论 UI 点击还是「意图调用」触发的写操作，都会经 save → 这里 → 前台自动刷新（修意图加灵感不刷新）。
+  static bump(): void {
+    try {
+      const v: number = (AppStorage.get('dataVersion') as number) ?? 0;
+      AppStorage.setOrCreate('dataVersion', v + 1);
+    } catch (e) {
+    }
+  }
+
   // 全量覆盖：先清空三表再整表写入（数据量小，简单可靠）
   static save(): void {
+    // 先发刷新信号（数据已在内存变更，不依赖落盘成败）
+    Persist.bump();
     if (!store) {
       console.error('[DB] save 跳过：store 不可用，数据未落盘');
       return;

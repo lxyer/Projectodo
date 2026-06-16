@@ -64,7 +64,7 @@ struct CelebrateLayer {
 @Component
 struct StatCard {
   label: string = '';
-  value: number = 0;
+  @Prop value: number = 0;
   accent: string = '#3D5AFE';
 
   build() {

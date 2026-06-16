@@ -42,6 +42,9 @@ export default class EntryAbility extends UIAbility {
   onForeground(): void {
     // Ability has brought to foreground
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    // 回前台只发刷新信号、读内存 Hub；不重读 RDB——预览器 mock 或偶发读空会覆盖清空内存的 seed 数据。
+    // 意图改数据的刷新已由 Persist.save() 里的 bump 覆盖。
+    Persist.bump();
   }
 
   onBackground(): void {
